@@ -12,7 +12,9 @@
 
 #### 2) What is the difference between map(), forEach(), and filter()? 
 **map()** প্রত্যেকটা আইটেমের উপর কাজ করে এবং নতুন অ্যারে return করে।
+
 **forEach()**প্রত্যেকটা আইটেমের উপর কাজ করে, কিন্তু কিছু return করে না।
+
 **filter()**condition দিয়ে ফিল্টার করে নতুন অ্যারে return করে।যে আইটেমগুলো condition মিলে শুধু সেগুলো রাখে।
 
 #### 3) What are arrow functions in ES6?
