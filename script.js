@@ -1,147 +1,182 @@
-const API_BASE = "https://openapi.programming-hero.com/api";
+var API_BASE = "https://openapi.programming-hero.com/api";
 
 // DOM Elements
-const categoryList = document.getElementById("category-list");
-const productList = document.getElementById("product-list");
-const cartItemsContainer = document.getElementById("cart-items");
-const cartTotal = document.getElementById("cart-total");
-const modal = document.getElementById("tree-modal");
-const closeModalBtn = document.getElementById("close-modal");
-const bottomCloseBtn = document.getElementById("bottom-close");
+var categoryList = document.getElementById("category-list");
+var productList = document.getElementById("product-list");
+var cartItemsContainer = document.getElementById("cart-items");
+var cartTotal = document.getElementById("cart-total");
+var modal = document.getElementById("tree-modal");
+var closeModalBtn = document.getElementById("close-modal");
+var bottomCloseBtn = document.getElementById("bottom-close");
 
 // Modal fields
-const modalImage = document.getElementById("modal-image");
-const modalName = document.getElementById("modal-name");
-const modalDescription = document.getElementById("modal-description");
-const modalCategory = document.getElementById("modal-category");
-const modalPrice = document.getElementById("modal-price");
-const modalAddBtn = document.getElementById("modal-add-to-cart"); // optional in your HTML
+var modalImage = document.getElementById("modal-image");
+var modalName = document.getElementById("modal-name");
+var modalDescription = document.getElementById("modal-description");
+var modalCategory = document.getElementById("modal-category");
+var modalPrice = document.getElementById("modal-price");
+var modalAddBtn = document.getElementById("modal-add-to-cart");
 
 // Cart
-let cart = [];
-let total = 0;
-let currentPlant = null; // store current plant for modal add-to-cart
+var cart = [];
+var total = 0;
+var currentPlant = null;
 
-/* ========= robust normalizers (handle multiple API shapes) ========= */
-const getId   = (o) => o?.id ?? o?.plant_id ?? o?.plantId ?? o?.plantID ?? null;
-const getName = (o) => o?.name ?? o?.plant_name ?? o?.plantName ?? o?.title ?? "Unnamed";
-const getCat  = (o) => o?.category ?? o?.category_name ?? "Tree";
-const getPrice= (o) => Number(o?.price ?? 0) || 0;
-const getImg  = (o) => o?.image ?? o?.img ?? o?.thumbnail ?? o?.photo ?? "";
-const getDesc = (o) => o?.description ?? o?.desc ?? o?.details ?? "";
+/*  normalizers */
+function getId(o) {
+  return (o && (o.id || o.plant_id || o.plantId || o.plantID)) || null;
+}
+function getName(o) {
+  return (o && (o.name || o.plant_name || o.plantName || o.title)) || "Unnamed";
+}
+function getCat(o) {
+  return (o && (o.category || o.category_name)) || "Tree";
+}
+function getPrice(o) {
+  return Number((o && o.price) || 0) || 0;
+}
+function getImg(o) {
+  return (o && (o.image || o.img || o.thumbnail || o.photo)) || "";
+}
+function getDesc(o) {
+  return (o && (o.description || o.desc || o.details)) || "";
+}
 
-// unify detail payload: supports {plant:{...}} and {plants:{...}}
-const pickPlantPayload = (data) => data?.plant ?? data?.plants ?? {};
+function pickPlantPayload(data) {
+  return (data && (data.plant || data.plants)) || {};
+}
 
-/* =========================
-   Load Categories
-========================= */
-const loadCategories = () => {
-  fetch(`${API_BASE}/categories`)
-    .then((res) => res.json())
-    .then((data) => {
-      const categories = data?.categories ?? [];
+//Load Categories
+ 
+function loadCategories() {
+  fetch(API_BASE + "/categories")
+    .then(function (res) {
+      return res.json();
+    })
+    .then(function (data) {
+      var categories = (data && data.categories) || [];
       showCategories(categories);
     })
-    .catch(() => showError("categories"));
-};
+    .catch(function () {
+      showError("categories");
+    });
+}
 
-const showCategories = (categories) => {
-  // "All Trees"
-  categoryList.innerHTML = `
-    <li>
-      <button id="all-trees" class="w-full text-left px-4 py-2 rounded-md bg-green-600 text-white">
-        All Trees
-      </button>
-    </li>
-  `;
+function showCategories(categories) {
+  categoryList.innerHTML =
+    '<li><button id="all-trees" class="w-full text-left px-4 py-2 rounded-md bg-green-600 text-white">All Trees</button></li>';
 
-  categories.forEach((cat) => {
-    const catId = cat?.id ?? cat?.category_id ?? cat?.cat_id;
-    categoryList.innerHTML += `
-      <li>
-        <button data-id="${catId ?? ""}" class="w-full text-left px-4 py-2 rounded-md hover:bg-green-100">
-          ${getCat(cat)}
-        </button>
-      </li>
-    `;
+  categories.forEach(function (cat) {
+    var catId = cat.id || cat.category_id || cat.cat_id || "";
+    categoryList.innerHTML +=
+      '<li><button data-id="' +
+      catId +
+      '" class="w-full text-left px-4 py-2 rounded-md hover:bg-green-100">' +
+      getCat(cat) +
+      "</button></li>";
   });
 
-  // Event delegation (only attach once)
   if (!categoryList._bound) {
-    categoryList.addEventListener("click", (e) => {
+    categoryList.addEventListener("click", function (e) {
       if (e.target.tagName !== "BUTTON") return;
-      const id = e.target.dataset.id;
-      showLoading();
+      var id = e.target.getAttribute("data-id");
       if (id) loadPlantsByCategory(id);
       else loadAllPlants();
     });
     categoryList._bound = true;
   }
-};
+}
 
-/* =========================
-   Load All Plants
-========================= */
-const loadAllPlants = () => {
-  fetch(`${API_BASE}/plants`)
-    .then((res) => res.json())
-    .then((data) => showPlants(data?.plants ?? []))
-    .catch(() => showError("plants"));
-};
 
-/* =========================
-   Load Plants by Category
-========================= */
-const loadPlantsByCategory = (id) => {
-  fetch(`${API_BASE}/category/${id}`)
-    .then((res) => res.json())
-    .then((data) => {
-      const plants = data?.plants ?? [];
-      plants.length ? showPlants(plants) : showEmptyMessage();
+   //Load All Plants
+
+function loadAllPlants() {
+  showLoading();
+  fetch(API_BASE + "/plants")
+    .then(function (res) {
+      return res.json();
     })
-    .catch(() => showError("plants"));
-};
+    .then(function (data) {
+      showPlants((data && data.plants) || []);
+    })
+    .catch(function () {
+      showError("plants");
+    });
+}
 
-/* =========================
-   Show Plants
-========================= */
-const showPlants = (plants) => {
+
+   //Load Plants by Category
+
+function loadPlantsByCategory(id) {
+  showLoading();
+  fetch(API_BASE + "/category/" + id)
+    .then(function (res) {
+      return res.json();
+    })
+    .then(function (data) {
+      var plants = (data && data.plants) || [];
+      if (plants.length) showPlants(plants);
+      else showEmptyMessage();
+    })
+    .catch(function () {
+      showError("plants");
+    });
+}
+
+   //Show Plants
+function showPlants(plants) {
   productList.innerHTML = "";
-  plants.forEach((tree) => {
-    const id = getId(tree);
-    const name = getName(tree);
-    const img = getImg(tree);
-    const cat = getCat(tree);
-    const price = getPrice(tree);
-    const short = (getDesc(tree) || "").substring(0, 80);
+  plants.forEach(function (tree) {
+    var id = getId(tree);
+    var name = getName(tree);
+    var img = getImg(tree);
+    var cat = getCat(tree);
+    var price = getPrice(tree);
+    var short = (getDesc(tree) || "").substring(0, 80);
 
-    productList.innerHTML += `
-      <div class="bg-white p-4 rounded-xl shadow">
-        <img data-id="${id ?? ""}" src="${img}" alt="${name}" class="open-detail w-full h-32 object-cover rounded mb-4">
-        <h3 data-id="${id ?? ""}" class="open-detail font-semibold text-green-700 cursor-pointer hover:underline">${name}</h3>
-        <p class="text-sm text-gray-600">${short ? short + "..." : ""}</p>
-        <span class="text-xs inline-block mt-2 px-2 py-1 bg-green-100 text-green-600 rounded">${cat}</span>
-        <div class="flex justify-between items-center mt-4">
-          <span class="font-semibold">৳${price}</span>
-          <button data-id="${id ?? ""}" data-name="${name}" data-price="${price}" class="add-to-cart bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">Add to Cart</button>
-        </div>
-      </div>
-    `;
+    productList.innerHTML +=
+      '<div class="bg-white p-4 rounded-xl shadow">' +
+      '<img data-id="' +
+      (id || "") +
+      '" src="' +
+      img +
+      '" alt="' +
+      name +
+      '" class="open-detail w-full h-32 object-cover rounded mb-4">' +
+      '<h3 data-id="' +
+      (id || "") +
+      '" class="open-detail font-semibold text-green-700 cursor-pointer hover:underline">' +
+      name +
+      "</h3>" +
+      '<p class="text-sm text-gray-600">' +
+      (short ? short + "..." : "") +
+      "</p>" +
+      '<span class="text-xs inline-block mt-2 px-2 py-1 bg-green-100 text-green-600 rounded">' +
+      cat +
+      "</span>" +
+      '<div class="flex justify-between items-center mt-4">' +
+      '<span class="font-semibold">৳' +
+      price +
+      "</span>" +
+      '<button data-id="' +
+      (id || "") +
+      '" data-name="' +
+      name +
+      '" data-price="' +
+      price +
+      '" class="add-to-cart bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">Add to Cart</button>' +
+      "</div>" +
+      "</div>";
   });
 
-  // If list is empty (defensive)
   if (!plants.length) showEmptyMessage();
-};
+}
 
-/* =========================
-   Event Delegation (Modal + Cart)
-========================= */
+  // Event Delegation
 if (!productList._bound) {
-  productList.addEventListener("click", (e) => {
-    // open modal when clicking image or name
+  productList.addEventListener("click", function (e) {
     if (e.target.classList.contains("open-detail")) {
-      const id = e.target.dataset.id;
+      var id = e.target.getAttribute("data-id");
       if (!id) {
         showToast("Missing plant id for details.");
         return;
@@ -149,12 +184,11 @@ if (!productList._bound) {
       handleViewDetails(id);
     }
 
-    // add to cart from card
     if (e.target.classList.contains("add-to-cart")) {
-      const item = {
-        id: e.target.dataset.id || null,
-        name: e.target.dataset.name || "Unnamed",
-        price: Number(e.target.dataset.price) || 0,
+      var item = {
+        id: e.target.getAttribute("data-id") || null,
+        name: e.target.getAttribute("data-name") || "Unnamed",
+        price: Number(e.target.getAttribute("data-price")) || 0,
       };
       addToCart(item);
     }
@@ -165,23 +199,24 @@ if (!productList._bound) {
 /* =========================
    Load Plant Detail (Modal)
 ========================= */
-const handleViewDetails = (id) => {
-  // Show a lightweight loading state in modal (optional)
-  if (modal && modalName) {
-    modalName.textContent = "Loading...";
-    modalDescription.textContent = "";
-    modalCategory.textContent = "";
-    modalPrice.textContent = "";
-    if (modalImage) modalImage.src = "";
-    modal.classList.remove("hidden");
-  }
+function handleViewDetails(id) {
+  modal.classList.remove("hidden");
+  modalName.textContent = "";
+  modalDescription.textContent =
+    '<div class="flex justify-center items-center py-10">' +
+    '<div class="animate-spin rounded-full h-10 w-10 border-t-4 border-green-600 border-solid"></div>' +
+    "</div>";
+  modalCategory.textContent = "";
+  modalPrice.textContent = "";
+  modalImage.src = "";
 
-  fetch(`${API_BASE}/plant/${id}`)
-    .then((res) => res.json())
-    .then((data) => {
-      const plant = pickPlantPayload(data);
-
-      const norm = {
+  fetch(API_BASE + "/plant/" + id)
+    .then(function (res) {
+      return res.json();
+    })
+    .then(function (data) {
+      var plant = pickPlantPayload(data);
+      var norm = {
         id: getId(plant),
         name: getName(plant),
         image: getImg(plant),
@@ -190,27 +225,22 @@ const handleViewDetails = (id) => {
         desc: getDesc(plant),
       };
 
-      // Keep a copy for "Add to cart" from modal
       currentPlant = { id: norm.id, name: norm.name, price: norm.price };
 
-      // Fill modal safely
-      if (modalName) modalName.textContent = norm.name || "Unnamed";
-      if (modalImage) modalImage.src = norm.image || "https://via.placeholder.com/300x200?text=No+Image";
-      if (modalCategory) modalCategory.textContent = norm.category || "Tree";
-      if (modalPrice) modalPrice.textContent = "৳" + (norm.price || 0);
-      if (modalDescription) modalDescription.textContent = norm.desc || "No description available.";
-
-      modal?.classList.remove("hidden");
+      modalName.textContent = norm.name || "Unnamed";
+      modalImage.src = norm.image || "https://via.placeholder.com/300x200?text=No+Image";
+      modalCategory.textContent = norm.category || "Tree";
+      modalPrice.textContent = "৳" + (norm.price || 0);
+      modalDescription.textContent = norm.desc || "No description available.";
     })
-    .catch((err) => {
-      console.error("Error loading plant detail:", err);
-      if (modalName) modalName.textContent = "Error loading details";
+    .catch(function () {
+      modalName.textContent = "Error loading details";
     });
-};
+}
 
-// Modal Add-to-Cart (only if the button exists in your HTML)
+// Modal Add-to-Cart
 if (modalAddBtn) {
-  modalAddBtn.addEventListener("click", () => {
+  modalAddBtn.addEventListener("click", function () {
     if (currentPlant) {
       addToCart(currentPlant);
       closeModal();
@@ -219,23 +249,25 @@ if (modalAddBtn) {
 }
 
 /* =========================
-   Modal close behavior
+   Modal Close
 ========================= */
 function closeModal() {
-  modal?.classList.add("hidden");
+  if (modal) modal.classList.add("hidden");
 }
-closeModalBtn?.addEventListener("click", closeModal);
-bottomCloseBtn?.addEventListener("click", closeModal);
-modal?.addEventListener("click", (e) => {
-  if (e.target === modal) closeModal();
-});
-document.addEventListener("keydown", (e) => {
+if (closeModalBtn) closeModalBtn.addEventListener("click", closeModal);
+if (bottomCloseBtn) bottomCloseBtn.addEventListener("click", closeModal);
+if (modal) {
+  modal.addEventListener("click", function (e) {
+    if (e.target === modal) closeModal();
+  });
+}
+document.addEventListener("keydown", function (e) {
   if (e.key === "Escape") closeModal();
 });
 
-/* =========================
-   Cart
-========================= */
+
+   //Cart
+
 function addToCart(item) {
   cart.push(item);
   total += item.price || 0;
@@ -244,45 +276,50 @@ function addToCart(item) {
 
 function updateCart() {
   cartItemsContainer.innerHTML = "";
-  cart.forEach((item, index) => {
-    cartItemsContainer.innerHTML += `
-      <li class="flex justify-between items-center bg-white p-2 rounded shadow">
-        <span>${item.name} ৳${item.price || 0}</span>
-        <button data-index="${index}" class="remove-item text-red-500 font-bold">×</button>
-      </li>
-    `;
+  cart.forEach(function (item, index) {
+    cartItemsContainer.innerHTML +=
+      '<li class="flex justify-between items-center bg-white p-2 rounded shadow">' +
+      "<span>" +
+      item.name +
+      " ৳" +
+      (item.price || 0) +
+      "</span>" +
+      '<button data-index="' +
+      index +
+      '" class="remove-item text-red-500 font-bold">×</button>' +
+      "</li>";
   });
   cartTotal.textContent = "৳" + total;
 }
 
-cartItemsContainer.addEventListener("click", (e) => {
+cartItemsContainer.addEventListener("click", function (e) {
   if (e.target.classList.contains("remove-item")) {
-    const index = parseInt(e.target.dataset.index, 10);
+    var index = parseInt(e.target.getAttribute("data-index"), 10);
     total -= cart[index].price || 0;
     cart.splice(index, 1);
     updateCart();
   }
 });
 
-/* =========================
-   UI Helpers
-========================= */
-const showLoading = () => {
-  productList.innerHTML = `<div class="bg-green-500 p-3 rounded">Loading...</div>`;
-};
-const showError = (type) => {
-  productList.innerHTML = `<div class="bg-red-500 p-3 rounded">Error loading ${type}!</div>`;
-};
-const showEmptyMessage = () => {
-  productList.innerHTML = `<div class="bg-orange-500 p-3 rounded">No items found</div>`;
-};
-const showToast = (msg) => {
-  console.warn(msg);
-};
 
-/* =========================
-   Init
-========================= */
+function showLoading() {
+  productList.innerHTML =
+    '<div class="flex justify-center items-center py-10">' +
+    '<div class="animate-spin rounded-full h-12 w-12 border-t-4 border-green-600 border-solid"></div>' +
+    "</div>";
+}
+function showError(type) {
+  productList.innerHTML =
+    '<div class="bg-red-500 p-3 rounded">Error loading ' + type + "!</div>";
+}
+function showEmptyMessage() {
+  productList.innerHTML =
+    '<div class="bg-orange-500 p-3 rounded">No items found</div>';
+}
+function showToast(msg) {
+  console.warn(msg);
+}
+// Initial Load
 loadCategories();
 loadAllPlants();
 
